@@ -2,150 +2,131 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CarspireOnline</title>
+  <title>CarspireOnline – Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Tailwind CDN -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      GoogleAuthProvider,
+      signInWithPopup
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      collection,
+      getDocs,
+      runTransaction,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    /* 🔥 YOUR FIREBASE CONFIG */
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    /* ---------- CREATE USER WITH UNIQUE ID ---------- */
+    async function createUserProfile(user, username) {
+      const userRef = doc(db, "users", user.uid);
+
+      await runTransaction(db, async (transaction) => {
+        const counterRef = doc(db, "meta", "userCounter");
+        const counterSnap = await transaction.get(counterRef);
+
+        let newId = 1;
+        if (counterSnap.exists()) {
+          newId = counterSnap.data().value + 1;
+          transaction.update(counterRef, { value: newId });
+        } else {
+          transaction.set(counterRef, { value: 1 });
+        }
+
+        transaction.set(userRef, {
+          username,
+          numericUserId: newId,
+          createdAt: serverTimestamp()
+        });
+      });
     }
-  </style>
-</head>
-<body class="overflow-x-hidden">
 
-<!-- MAGIC GRADIENT BACKGROUND -->
-<div class="fixed inset-0 -z-10">
-  <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-20"></div>
-  <div class="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-400 rounded-full blur-3xl opacity-30 animate-pulse"></div>
-  <div class="absolute top-1/2 -right-40 w-[500px] h-[500px] bg-purple-400 rounded-full blur-3xl opacity-30 animate-pulse"></div>
-</div>
+    /* ---------- LOGIN ---------- */
+    window.login = async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      await signInWithEmailAndPassword(auth, email, password);
+      alert("Logged in!");
+    };
 
-<!-- LOGIN PAGE -->
-<div id="loginPage" class="min-h-screen flex items-center justify-center">
-  <div class="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md">
-    <h1 class="text-3xl font-bold text-center mb-6">CarspireOnline</h1>
-    <input id="emailInput" class="w-full p-3 border rounded-xl mb-4" placeholder="Email" />
-    <button onclick="login()" class="w-full bg-indigo-600 text-white p-3 rounded-xl">
-      Login
-    </button>
-    <p class="text-xs text-gray-500 text-center mt-4">
-      Admin: admin@carspire.com
-    </p>
-  </div>
-</div>
+    /* ---------- SIGNUP ---------- */
+    window.signup = async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      const username = usernameInput.value;
 
-<!-- MENU PAGE -->
-<div id="menuPage" class="hidden min-h-screen">
-  <nav class="bg-white/80 backdrop-blur-xl p-4 flex justify-between items-center shadow">
-    <h1 class="font-bold text-xl">🚗 CarspireOnline</h1>
-    <button onclick="logout()" class="text-red-500 font-semibold">Logout</button>
-  </nav>
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await createUserProfile(cred.user, username);
+      alert("Account created!");
+    };
 
-  <div class="p-8 grid md:grid-cols-3 gap-6">
-    <button onclick="openBrief()" class="bg-indigo-600 text-white p-6 rounded-xl">
-      📅 Today’s Brief
-    </button>
-    <div class="bg-purple-600 text-white p-6 rounded-xl">
-      👥 Community
-    </div>
-    <div class="bg-pink-600 text-white p-6 rounded-xl">
-      🔥 Trending
-    </div>
-  </div>
-</div>
+    /* ---------- GOOGLE LOGIN ---------- */
+    window.googleLogin = async () => {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
 
-<!-- BRIEF PAGE -->
-<div id="briefPage" class="hidden min-h-screen">
-  <nav class="bg-white/80 backdrop-blur-xl p-4 shadow flex justify-between">
-    <button onclick="goMenu()" class="font-semibold">← Back</button>
-    <h2 class="font-bold">Today’s Brief</h2>
-  </nav>
+      const userDoc = doc(db, "users", result.user.uid);
+      const snap = await getDoc(userDoc);
 
-  <div class="max-w-3xl mx-auto p-6">
-    <h2 id="briefDate" class="text-3xl font-bold mb-6"></h2>
-
-    <div id="newsContainer" class="space-y-4">
-      <p class="text-gray-600">Loading news...</p>
-    </div>
-  </div>
-</div>
-
-<script>
-  const loginPage = document.getElementById("loginPage");
-  const menuPage = document.getElementById("menuPage");
-  const briefPage = document.getElementById("briefPage");
-  const newsContainer = document.getElementById("newsContainer");
-  const briefDate = document.getElementById("briefDate");
-
-  function login() {
-    loginPage.classList.add("hidden");
-    menuPage.classList.remove("hidden");
-  }
-
-  function logout() {
-    menuPage.classList.add("hidden");
-    briefPage.classList.add("hidden");
-    loginPage.classList.remove("hidden");
-  }
-
-  function openBrief() {
-    menuPage.classList.add("hidden");
-    briefPage.classList.remove("hidden");
-    loadBrief();
-  }
-
-  function goMenu() {
-    briefPage.classList.add("hidden");
-    menuPage.classList.remove("hidden");
-  }
-
-  function loadBrief() {
-    const today = new Date();
-    briefDate.textContent = today.toDateString();
-
-    // Static fallback news (NO API REQUIRED)
-    const news = [
-      {
-        title: "Tesla cuts Model Y pricing",
-        summary: "Tesla lowers prices to stay competitive in 2026.",
-        source: "EV Insider",
-        time: "2h ago"
-      },
-      {
-        title: "Toyota reveals next-gen EV platform",
-        summary: "New architecture promises longer range and faster charging.",
-        source: "Auto News",
-        time: "4h ago"
-      },
-      {
-        title: "BMW previews electric M-series",
-        summary: "Performance-focused EVs coming sooner than expected.",
-        source: "CarTech",
-        time: "6h ago"
+      if (!snap.exists()) {
+        await createUserProfile(result.user, result.user.displayName);
       }
-    ];
 
-    newsContainer.innerHTML = "";
+      alert("Logged in with Google!");
+    };
+  </script>
+</head>
 
-    news.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "bg-white/80 rounded-xl p-5 shadow";
-      card.innerHTML = `
-        <h3 class="font-bold text-lg">${item.title}</h3>
-        <p class="text-gray-600">${item.summary}</p>
-        <div class="text-sm text-gray-500 flex justify-between mt-2">
-          <span>${item.source}</span>
-          <span>${item.time}</span>
-        </div>
-      `;
-      newsContainer.appendChild(card);
-    });
-  }
-</script>
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+
+<div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md">
+  <h1 class="text-3xl font-bold text-center mb-6">CarspireOnline</h1>
+
+  <input id="usernameInput" placeholder="Username (signup only)"
+    class="w-full p-3 border rounded-xl mb-3">
+
+  <input id="emailInput" placeholder="Email"
+    class="w-full p-3 border rounded-xl mb-3">
+
+  <input id="passwordInput" type="password" placeholder="Password"
+    class="w-full p-3 border rounded-xl mb-4">
+
+  <button onclick="login()" class="w-full bg-indigo-600 text-white p-3 rounded-xl mb-2">
+    Login
+  </button>
+
+  <button onclick="signup()" class="w-full bg-green-600 text-white p-3 rounded-xl mb-2">
+    Sign Up
+  </button>
+
+  <button onclick="googleLogin()" class="w-full bg-red-500 text-white p-3 rounded-xl">
+    Continue with Google
+  </button>
+</div>
 
 </body>
 </html>
