@@ -7,9 +7,9 @@
 <style>
 :root{
   --bg:#0b0b0f;
-  --card:#151520;
   --text:#ffffff;
-  --accent:linear-gradient(135deg,#4f7cff,#7a5cff);
+  --card:#151520;
+  --menu-gradient:linear-gradient(135deg,#ff512f,#dd2476);
 }
 
 body{
@@ -19,6 +19,7 @@ body{
   color:var(--text);
 }
 
+/* HEADER */
 header{
   display:flex;
   justify-content:space-between;
@@ -26,50 +27,64 @@ header{
   padding:20px 40px;
 }
 
-.logo{
-  font-size:22px;
-  font-weight:700;
-}
+.logo{font-size:22px;font-weight:700;}
 
 .profile-btn{
+  display:flex;
+  align-items:center;
+  gap:10px;
   cursor:pointer;
-  padding:8px 14px;
-  border-radius:10px;
-  background:#1e1e2e;
 }
 
+.profile-btn img{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+/* BRIEF */
 .brief{
-  margin:40px auto;
   width:80%;
+  margin:40px auto;
   padding:40px;
-  border-radius:18px;
-  background:var(--accent);
+  border-radius:20px;
+  background:linear-gradient(135deg,#4f7cff,#7a5cff);
   text-align:center;
   font-size:36px;
   font-weight:700;
 }
 
+/* MENU */
 .menu{
+  width:80%;
+  margin:auto;
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:30px;
-  width:80%;
-  margin:0 auto;
 }
 
 .menu-card{
   background:var(--card);
-  border-radius:18px;
   padding:40px;
+  border-radius:20px;
   text-align:center;
   font-size:22px;
   cursor:pointer;
-  transition:.2s;
 }
 
-.menu-card:hover{
-  transform:translateY(-6px);
-  box-shadow:0 20px 40px rgba(0,0,0,.4);
+/* FULLSCREEN MENU */
+#fullscreenMenu{
+  position:fixed;
+  inset:0;
+  background:var(--menu-gradient);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:30px;
+  font-size:30px;
+  z-index:100;
 }
 
 /* LOGIN */
@@ -89,23 +104,12 @@ header{
   width:320px;
 }
 
-.login-box input{
+.login-box input,button{
   width:100%;
   padding:12px;
-  margin-bottom:14px;
+  margin-top:12px;
   border-radius:10px;
   border:none;
-}
-
-.login-box button{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:10px;
-  background:var(--accent);
-  color:#fff;
-  font-weight:700;
-  cursor:pointer;
 }
 
 /* PROFILE */
@@ -121,23 +125,15 @@ header{
 .profile-box{
   background:#151520;
   padding:30px;
-  border-radius:18px;
-  width:300px;
-}
-
-.profile-box button{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
+  border-radius:20px;
+  width:320px;
 }
 </style>
 </head>
 
 <body>
 
+<!-- LOGIN -->
 <div id="login">
   <div class="login-box">
     <h2>Login</h2>
@@ -149,30 +145,42 @@ header{
 
 <header>
   <div class="logo">CarSpireOnline</div>
-  <div class="profile-btn" onclick="openProfile()" id="profileName">User</div>
+  <div class="profile-btn" onclick="openProfile()">
+    <img id="avatar" src="https://via.placeholder.com/100">
+    <span id="profileName">User</span>
+  </div>
 </header>
 
 <div class="brief">Brief</div>
 
 <div class="menu">
-  <div class="menu-card" onclick="openSection('Community')">Community</div>
-  <div class="menu-card" onclick="openSection('Car Diagnostics')">Car Diagnostics</div>
-  <div class="menu-card" onclick="openSection('Trend')">Trend</div>
+  <div class="menu-card" onclick="openMenu()">Community</div>
+  <div class="menu-card" onclick="openMenu()">Car Diagnostics</div>
+  <div class="menu-card" onclick="openMenu()">Trend</div>
+</div>
+
+<!-- FULLSCREEN MENU -->
+<div id="fullscreenMenu" onclick="closeMenu()">
+  <div>Community</div>
+  <div>Car Diagnostics</div>
+  <div>Trend</div>
+  <small>(click anywhere to close)</small>
 </div>
 
 <!-- PROFILE -->
 <div id="profile">
   <div class="profile-box">
     <h3 id="profileUser"></h3>
-    <button onclick="toggleTheme()">Change Theme</button>
+    <input type="file" accept="image/*" onchange="uploadAvatar(event)">
+    <button onclick="setTheme()">CarSpireThailand Theme</button>
     <button onclick="logout()">Logout</button>
     <button onclick="closeProfile()">Close</button>
   </div>
 </div>
 
 <script>
-/* USERS (FROM YOUR IMAGE – UNCHANGED) */
-const users = [
+/* USERS */
+const users=[
  {username:"AnapatMaliwong",password:"PorscheAnapatMaliwong2554678",id:1},
  {username:"BewCEO",password:"Bew_spire_TH0311",id:2},
  {username:"MarkeyMOD",password:"Mark_Key979",id:3},
@@ -184,56 +192,55 @@ let currentUser=null;
 
 /* LOGIN */
 function login(){
- const u=document.getElementById("username").value;
- const p=document.getElementById("password").value;
-
- const found=users.find(x=>x.username===u && x.password===p);
- if(!found){ alert("Wrong login"); return; }
-
+ const u=username.value,p=password.value;
+ const found=users.find(x=>x.username===u&&x.password===p);
+ if(!found)return alert("Wrong login");
  currentUser=found;
  localStorage.setItem("user",JSON.stringify(found));
- document.getElementById("login").style.display="none";
- document.getElementById("profileName").innerText=found.username;
+ init();
 }
 
-/* AUTO LOGIN */
-const saved=localStorage.getItem("user");
-if(saved){
- currentUser=JSON.parse(saved);
- document.getElementById("login").style.display="none";
- document.getElementById("profileName").innerText=currentUser.username;
+function init(){
+ login.style.display="none";
+ profileName.innerText=currentUser.username;
+ profileUser.innerText=currentUser.username;
+
+ const img=localStorage.getItem("avatar_"+currentUser.id);
+ if(img)avatar.src=img;
 }
+
+const saved=localStorage.getItem("user");
+if(saved){currentUser=JSON.parse(saved);init();}
 
 /* PROFILE */
-function openProfile(){
- document.getElementById("profileUser").innerText=currentUser.username;
- document.getElementById("profile").style.display="flex";
-}
-function closeProfile(){
- document.getElementById("profile").style.display="none";
-}
+function openProfile(){profile.style.display="flex";}
+function closeProfile(){profile.style.display="none";}
 
-/* LOGOUT */
-function logout(){
- localStorage.removeItem("user");
- location.reload();
+/* AVATAR */
+function uploadAvatar(e){
+ const reader=new FileReader();
+ reader.onload=()=>{ 
+  avatar.src=reader.result;
+  localStorage.setItem("avatar_"+currentUser.id,reader.result);
+ };
+ reader.readAsDataURL(e.target.files[0]);
 }
 
 /* THEME */
-let dark=true;
-function toggleTheme(){
- dark=!dark;
+function setTheme(){
  document.documentElement.style.setProperty(
-   "--bg",dark?"#0b0b0f":"#f2f2f2"
- );
- document.documentElement.style.setProperty(
-   "--text",dark?"#fff":"#000"
+  "--menu-gradient","linear-gradient(135deg,#ff512f,#f09819)"
  );
 }
 
 /* MENU */
-function openSection(name){
- alert(name+" clicked (hook your page here)");
+function openMenu(){fullscreenMenu.style.display="flex";}
+function closeMenu(){fullscreenMenu.style.display="none";}
+
+/* LOGOUT */
+function logout(){
+ localStorage.clear();
+ location.reload();
 }
 </script>
 
