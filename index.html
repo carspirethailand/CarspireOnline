@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>CarspireOnline</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<title>CarspireOnline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- React -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <style>
-    body {
-      background:
-        radial-gradient(circle at top, #1f2937, #020617 60%, #000 100%);
-    }
-  </style>
+<style>
+  body {
+    transition: background 0.4s ease;
+  }
+  .glass {
+    backdrop-filter: blur(18px);
+    background: rgba(255,255,255,0.12);
+  }
+</style>
 </head>
 
-<body class="text-white">
+<body>
 <div id="root"></div>
 
 <script type="text/babel">
@@ -41,21 +41,25 @@ const USERS = [
 function App() {
   const [user, setUser] = React.useState(null);
   const [page, setPage] = React.useState("login");
-  const [error, setError] = React.useState("");
+  const [theme, setTheme] = React.useState(
+    localStorage.getItem("theme") || "dark"
+  );
+
+  React.useEffect(() => {
+    document.body.className =
+      theme === "dark"
+        ? "bg-gradient-to-br from-slate-900 via-indigo-950 to-black text-white"
+        : "bg-gray-100 text-black";
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   function login(username, password) {
     const found = USERS.find(
       u => u.username === username && u.password === password
     );
-
-    if (!found) {
-      setError("Invalid username or password");
-      return;
-    }
-
+    if (!found) return alert("Invalid login");
     setUser(found);
     setPage("menu");
-    setError("");
   }
 
   function logout() {
@@ -63,61 +67,44 @@ function App() {
     setPage("login");
   }
 
-  if (page === "login") {
-    return <LoginPage onLogin={login} error={error} />;
-  }
+  if (page === "login") return <Login login={login} />;
+  if (page === "menu") return <Menu user={user} setPage={setPage} />;
+  if (page === "profile")
+    return <Profile user={user} setUser={setUser} logout={logout} setPage={setPage} />;
+  if (page === "settings")
+    return <Settings theme={theme} setTheme={setTheme} setPage={setPage} />;
 
-  if (page === "menu") {
-    return <MenuPage user={user} setPage={setPage} />;
-  }
-
-  if (page === "profile") {
-    return <ProfilePage user={user} logout={logout} back={() => setPage("menu")} />;
-  }
-
-  return (
-    <SimplePage title={page} back={() => setPage("menu")} />
-  );
+  return <Placeholder title={page} setPage={setPage} />;
 }
 
 /* ---------------- LOGIN ---------------- */
 
-function LoginPage({ onLogin, error }) {
-  const [username, setUsername] = React.useState("");
-  const [password, setPassword] = React.useState("");
+function Login({ login }) {
+  const [u, setU] = React.useState("");
+  const [p, setP] = React.useState("");
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="bg-black/60 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md border border-white/10">
-        <h1 className="text-3xl font-bold text-center mb-6">CarspireOnline</h1>
+      <div className="glass p-10 rounded-3xl shadow-2xl w-full max-w-md border border-white/10">
+        <h1 className="text-4xl font-bold text-center mb-8">CarspireOnline</h1>
 
         <input
-          className="w-full p-3 mb-4 rounded-xl bg-black border border-white/20"
+          className="w-full p-3 mb-4 rounded-xl bg-black/30 border border-white/20"
           placeholder="Username"
-          onChange={e => setUsername(e.target.value)}
+          onChange={e => setU(e.target.value)}
         />
-
         <input
           type="password"
-          className="w-full p-3 mb-4 rounded-xl bg-black border border-white/20"
+          className="w-full p-3 mb-6 rounded-xl bg-black/30 border border-white/20"
           placeholder="Password"
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => setP(e.target.value)}
         />
 
-        {error && <p className="text-red-400 mb-3">{error}</p>}
-
         <button
-          onClick={() => onLogin(username, password)}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-xl font-bold"
+          onClick={() => login(u, p)}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 py-3 rounded-xl font-bold"
         >
           Login
-        </button>
-
-        <button
-          onClick={() => alert("Signup coming soon")}
-          className="w-full mt-4 text-sm text-gray-400 hover:text-white"
-        >
-          Sign up
         </button>
       </div>
     </div>
@@ -126,60 +113,47 @@ function LoginPage({ onLogin, error }) {
 
 /* ---------------- MENU ---------------- */
 
-function MenuPage({ user, setPage }) {
+function Menu({ user, setPage }) {
   return (
-    <div className="min-h-screen bg-gray-100 text-black">
+    <div className="min-h-screen">
 
       {/* TOP BAR */}
-      <div className="bg-white shadow-md p-4 flex justify-between items-center">
+      <div className="flex justify-between items-center p-6">
         <h1 className="text-2xl font-bold">CarspireOnline</h1>
-
         <button
           onClick={() => setPage("profile")}
-          className="font-semibold hover:underline"
+          className="px-4 py-2 rounded-full glass hover:scale-105 transition"
         >
           {user.username}
         </button>
       </div>
 
-      {/* CONTENT */}
-      <div className="max-w-6xl mx-auto p-6">
+      {/* HERO */}
+      <div className="mx-6 mb-12 h-48 rounded-3xl 
+        bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600
+        flex items-center justify-center shadow-2xl">
+        <h2 className="text-5xl font-bold">Brief</h2>
+      </div>
 
-        {/* BRIEF */}
-        <button
-          onClick={() => setPage("Brief")}
-          className="w-full h-44 mb-10 rounded-3xl 
-                     bg-gradient-to-r from-blue-600 to-indigo-600
-                     text-white text-5xl font-bold shadow-xl"
-        >
-          Brief
-        </button>
+      {/* GRID */}
+      <div className="grid md:grid-cols-3 gap-8 px-6">
 
-        {/* GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
+        {[
+          ["Community", "Community"],
+          ["Car Diagnostics", "Diagnostics"],
+          ["Trend", "Trend"],
+        ].map(([label, page]) => (
           <button
-            onClick={() => setPage("Community")}
-            className="h-48 bg-white rounded-3xl shadow-lg text-3xl font-semibold"
+            key={page}
+            onClick={() => setPage(page)}
+            className="glass h-44 rounded-3xl shadow-xl
+              text-3xl font-semibold
+              hover:-translate-y-2 hover:shadow-2xl transition"
           >
-            Community
+            {label}
           </button>
+        ))}
 
-          <button
-            onClick={() => setPage("Car Diagnostics")}
-            className="h-48 bg-white rounded-3xl shadow-lg text-3xl font-semibold"
-          >
-            Car Diagnostics
-          </button>
-
-          <button
-            onClick={() => setPage("Trend")}
-            className="h-48 bg-white rounded-3xl shadow-lg text-3xl font-semibold"
-          >
-            Trend
-          </button>
-
-        </div>
       </div>
     </div>
   );
@@ -187,58 +161,92 @@ function MenuPage({ user, setPage }) {
 
 /* ---------------- PROFILE ---------------- */
 
-function ProfilePage({ user, logout, back }) {
+function Profile({ user, setUser, logout, setPage }) {
+  const [name, setName] = React.useState(user.username);
+
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="glass p-10 rounded-3xl shadow-2xl w-full max-w-md">
 
         <h1 className="text-3xl font-bold mb-6">Profile</h1>
 
-        <p className="mb-4"><b>Username:</b> {user.username}</p>
-        <p className="mb-6"><b>User ID:</b> {user.id}</p>
+        <label className="text-sm opacity-70">Display Name</label>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="w-full p-3 mb-6 rounded-xl bg-black/30 border border-white/20"
+        />
 
         <button
-          onClick={() => alert("Edit profile coming soon")}
-          className="w-full mb-3 bg-blue-600 p-3 rounded-xl"
+          onClick={() => {
+            setUser({ ...user, username: name });
+            alert("Profile updated");
+          }}
+          className="w-full mb-3 bg-blue-600 py-3 rounded-xl"
         >
-          Edit Profile
+          Save Profile
         </button>
 
         <button
-          onClick={() => alert("Settings coming soon")}
-          className="w-full mb-3 bg-indigo-600 p-3 rounded-xl"
+          onClick={() => setPage("settings")}
+          className="w-full mb-3 bg-indigo-600 py-3 rounded-xl"
         >
           Settings
         </button>
 
         <button
           onClick={logout}
-          className="w-full mb-3 bg-red-600 p-3 rounded-xl"
+          className="w-full bg-red-600 py-3 rounded-xl"
         >
           Logout
         </button>
 
         <button
-          onClick={back}
-          className="w-full mt-4 text-gray-300"
+          onClick={() => setPage("menu")}
+          className="w-full mt-4 opacity-70"
         >
           Back
         </button>
-
       </div>
     </div>
   );
 }
 
-/* ---------------- SIMPLE PAGE ---------------- */
+/* ---------------- SETTINGS ---------------- */
 
-function SimplePage({ title, back }) {
+function Settings({ theme, setTheme, setPage }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-      <h1 className="text-5xl font-bold mb-6">{title}</h1>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="glass p-10 rounded-3xl w-full max-w-md">
+        <h1 className="text-3xl font-bold mb-6">Settings</h1>
+
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 py-3 rounded-xl mb-6"
+        >
+          Switch to {theme === "dark" ? "Light" : "Dark"} Theme
+        </button>
+
+        <button
+          onClick={() => setPage("menu")}
+          className="w-full opacity-70"
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- PLACEHOLDER ---------------- */
+
+function Placeholder({ title, setPage }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center">
+      <h1 className="text-5xl font-bold mb-8">{title}</h1>
       <button
-        onClick={back}
-        className="px-6 py-3 bg-white text-black rounded-xl font-semibold"
+        onClick={() => setPage("menu")}
+        className="px-6 py-3 bg-white text-black rounded-xl"
       >
         Back to Menu
       </button>
