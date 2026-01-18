@@ -1,132 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>CarspireOnline – Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+</head>
 
-  <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      GoogleAuthProvider,
-      signInWithPopup
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600">
 
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      collection,
-      getDocs,
-      runTransaction,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+<div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl">
+  <h1 class="text-3xl font-bold text-center mb-6">CarspireOnline</h1>
 
-    /* 🔥 YOUR FIREBASE CONFIG */
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT",
-    };
+  <!-- LOGIN FORM -->
+  <div id="loginForm">
+    <input id="loginUsername" placeholder="Username"
+      class="w-full p-3 border rounded-xl mb-3">
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    <input id="loginPassword" type="password" placeholder="Password"
+      class="w-full p-3 border rounded-xl mb-4">
 
-    /* ---------- CREATE USER WITH UNIQUE ID ---------- */
-    async function createUserProfile(user, username) {
-      const userRef = doc(db, "users", user.uid);
+    <button id="loginBtn"
+      class="w-full bg-indigo-600 text-white p-3 rounded-xl mb-3">
+      Login
+    </button>
 
-      await runTransaction(db, async (transaction) => {
+    <button id="googleBtn"
+      class="w-full bg-red-500 text-white p-3 rounded-xl mb-4">
+      Continue with Google
+    </button>
+
+    <p class="text-center text-sm">
+      Don’t have an account?
+      <span id="showSignup" class="text-indigo-600 cursor-pointer font-semibold">
+        Sign up
+      </span>
+    </p>
+  </div>
+
+  <!-- SIGNUP FORM -->
+  <div id="signupForm" class="hidden">
+    <input id="signupUsername" placeholder="Username"
+      class="w-full p-3 border rounded-xl mb-3">
+
+    <input id="signupEmail" placeholder="Email"
+      class="w-full p-3 border rounded-xl mb-3">
+
+    <input id="signupPassword" type="password" placeholder="Password"
+      class="w-full p-3 border rounded-xl mb-4">
+
+    <button id="signupBtn"
+      class="w-full bg-green-600 text-white p-3 rounded-xl mb-4">
+      Create Account
+    </button>
+
+    <p class="text-center text-sm">
+      Already have an account?
+      <span id="showLogin" class="text-indigo-600 cursor-pointer font-semibold">
+        Login
+      </span>
+    </p>
+  </div>
+</div>
+
+<!-- 🔥 FIREBASE LOGIC -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    runTransaction,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  /* 🔧 CONFIG (REPLACE THIS) */
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  /* UI TOGGLE */
+  const loginForm = document.getElementById("loginForm");
+  const signupForm = document.getElementById("signupForm");
+
+  document.getElementById("showSignup").onclick = () => {
+    loginForm.classList.add("hidden");
+    signupForm.classList.remove("hidden");
+  };
+
+  document.getElementById("showLogin").onclick = () => {
+    signupForm.classList.add("hidden");
+    loginForm.classList.remove("hidden");
+  };
+
+  /* LOGIN */
+  document.getElementById("loginBtn").onclick = async () => {
+    const username = loginUsername.value;
+    const password = loginPassword.value;
+
+    const email = `${username}@carspire.app`;
+
+    await signInWithEmailAndPassword(auth, email, password);
+    alert("Logged in!");
+  };
+
+  /* SIGNUP */
+  document.getElementById("signupBtn").onclick = async () => {
+    const username = signupUsername.value;
+    const email = signupEmail.value;
+    const password = signupPassword.value;
+
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+    await runTransaction(db, async (tx) => {
+      const counterRef = doc(db, "meta", "userCounter");
+      const userRef = doc(db, "users", cred.user.uid);
+
+      const counterSnap = await tx.get(counterRef);
+      const newId = counterSnap.exists() ? counterSnap.data().value + 1 : 1;
+
+      tx.set(counterRef, { value: newId });
+      tx.set(userRef, {
+        username,
+        userId: newId,
+        createdAt: serverTimestamp()
+      });
+    });
+
+    alert("Account created!");
+  };
+
+  /* GOOGLE LOGIN */
+  document.getElementById("googleBtn").onclick = async () => {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+
+    const userRef = doc(db, "users", result.user.uid);
+    const snap = await getDoc(userRef);
+
+    if (!snap.exists()) {
+      await runTransaction(db, async (tx) => {
         const counterRef = doc(db, "meta", "userCounter");
-        const counterSnap = await transaction.get(counterRef);
+        const counterSnap = await tx.get(counterRef);
+        const newId = counterSnap.exists() ? counterSnap.data().value + 1 : 1;
 
-        let newId = 1;
-        if (counterSnap.exists()) {
-          newId = counterSnap.data().value + 1;
-          transaction.update(counterRef, { value: newId });
-        } else {
-          transaction.set(counterRef, { value: 1 });
-        }
-
-        transaction.set(userRef, {
-          username,
-          numericUserId: newId,
+        tx.set(counterRef, { value: newId });
+        tx.set(userRef, {
+          username: result.user.displayName,
+          userId: newId,
           createdAt: serverTimestamp()
         });
       });
     }
 
-    /* ---------- LOGIN ---------- */
-    window.login = async () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      await signInWithEmailAndPassword(auth, email, password);
-      alert("Logged in!");
-    };
-
-    /* ---------- SIGNUP ---------- */
-    window.signup = async () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      const username = usernameInput.value;
-
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(cred.user, username);
-      alert("Account created!");
-    };
-
-    /* ---------- GOOGLE LOGIN ---------- */
-    window.googleLogin = async () => {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-
-      const userDoc = doc(db, "users", result.user.uid);
-      const snap = await getDoc(userDoc);
-
-      if (!snap.exists()) {
-        await createUserProfile(result.user, result.user.displayName);
-      }
-
-      alert("Logged in with Google!");
-    };
-  </script>
-</head>
-
-<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-
-<div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md">
-  <h1 class="text-3xl font-bold text-center mb-6">CarspireOnline</h1>
-
-  <input id="usernameInput" placeholder="Username (signup only)"
-    class="w-full p-3 border rounded-xl mb-3">
-
-  <input id="emailInput" placeholder="Email"
-    class="w-full p-3 border rounded-xl mb-3">
-
-  <input id="passwordInput" type="password" placeholder="Password"
-    class="w-full p-3 border rounded-xl mb-4">
-
-  <button onclick="login()" class="w-full bg-indigo-600 text-white p-3 rounded-xl mb-2">
-    Login
-  </button>
-
-  <button onclick="signup()" class="w-full bg-green-600 text-white p-3 rounded-xl mb-2">
-    Sign Up
-  </button>
-
-  <button onclick="googleLogin()" class="w-full bg-red-500 text-white p-3 rounded-xl">
-    Continue with Google
-  </button>
-</div>
+    alert("Logged in with Google!");
+  };
+</script>
 
 </body>
 </html>
